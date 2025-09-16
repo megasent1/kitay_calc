@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chinese Poker Score Keeper</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f0f0f0;
+    }
+    #app {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 10px 15px;
+      margin: 10px 0;
+      font-size: 1.2em;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f8f8f8;
+    }
+    .player-count-selection {
+        display: flex;
+        gap: 10px;
+    }
+    .player-count-selection button {
+      font-size: 2em;
+      margin: 10px;
+    }
+    input {
+      width: 96%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .player-pair {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 10px;
+    }
+    .player-card {
+      border: 2px solid black;
+      padding: 15px;
+      cursor: pointer;
+      border-radius: 4px;
+      text-align: center;
+      flex-grow: 1;
+      margin: 0 5px;
+    }
+    .winner {
+      border-color: green;
+      background-color: #e8f5e9;
+    }
+    .loser {
+      border-color: red;
+      background-color: #ffebee;
+    }
+    .match-input {
+        border: 1px solid #eee;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+    }
+    .scores-summary h2 {
+        margin-bottom: 10px;
+    }
+    .scores-summary div {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div v-if="!gameStarted">
+    <h1>Выберите количество игроков</h1>
+    <div class="player-count-selection">
+      <button @click="selectPlayerCount(2)">2</button>
+      <button @click="selectPlayerCount(3)">3</button>
+    </div>
+    <div v-if="playerCount > 0">
+      <div v-for="(player, index) in players" :key="index">
+        <input v-model="player.name" :placeholder="'Игрок ' + (index + 1)" />
+      </div>
+      <button @click="startGame">Старт</button>
+    </div>
+  </div>
+
+  <div v-else>
+    <div class="scores-summary">
+        <h2>Общий счет</h2>
+        <div v-for="player in players">
+            <span>{{ player.name }}:</span>
+            <span>{{ player.score }}</span>
+        </div>
+    </div>
+
+    <div v-if="!editing">
+        <h1>Ввод очков</h1>
+        <div class="match-input" v-for="(match, matchIndex) in matches" :key="matchIndex">
+          <div class="player-pair">
+            <div
+              class="player-card"
+              :class="{ winner: match.winner === match.players[0], loser: match.winner === match.players[1] && match.winner !== null }"
+              @click="selectWinner(matchIndex, match.players[0])"
+            >
+              {{ getPlayerName(match.players[0]) }}
+            </div>
+            <div
+              class="player-card"
+              :class="{ winner: match.winner === match.players[1], loser: match.winner === match.players[0] && match.winner !== null }"
+              @click="selectWinner(matchIndex, match.players[1])"
+            >
+              {{ getPlayerName(match.players[1]) }}
+            </div>
+          </div>
+          <input type="number" v-model.number="match.points" placeholder="Очки" />
+        </div>
+        <button @click="saveScores">Сохранить</button>
+        <button @click="editScores">Изменить очки</button>
+    </div>
+
+    <div v-if="editing">
+      <h2>Изменить очки вручную</h2>
+      <div v-for="(player, index) in players" :key="index">
+        <label>{{ player.name }}</label>
+        <input type="number" v-model.number="player.score" />
+      </div>
+      <button @click="editScores">Готово</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const { createApp } = Vue;
+
+  createApp({
+    data() {
+      return {
+        playerCount: 0,
+        players: [],
+        gameStarted: false,
+        matches: [],
+        editing: false,
+      };
+    },
+    methods: {
+      selectPlayerCount(count) {
+        this.playerCount = count;
+        this.players = [];
+        for (let i = 0; i < count; i++) {
+          this.players.push({ id: i, name: '', score: 0 });
+        }
+      },
+      startGame() {
+        // Assign default player names if empty
+        this.players.forEach((player, index) => {
+            if (!player.name.trim()) {
+                player.name = `Игрок ${index + 1}`;
+            }
+        });
+        this.gameStarted = true;
+        this.newRound();
+      },
+      getPlayerName(playerId) {
+          const player = this.players.find(p => p.id === playerId);
+          return player ? player.name : '';
+      },
+      selectWinner(matchIndex, winnerId) {
+        this.matches[matchIndex].winner = winnerId;
+      },
+      saveScores() {
+        this.matches.forEach(match => {
+          if (match.winner !== null && match.points > 0) {
+            const winnerPlayer = this.players.find(p => p.id === match.winner);
+            const loserPlayerId = match.players.find(pId => pId !== match.winner);
+            const loserPlayer = this.players.find(p => p.id === loserPlayerId);
+
+            if(winnerPlayer && loserPlayer) {
+                winnerPlayer.score += match.points;
+                loserPlayer.score -= match.points;
+            }
+          }
+        });
+        // After saving, maybe start a new round or show a summary
+        // For now, let's just clear the points and winners for the next input
+        this.matches.forEach(match => {
+            match.winner = null;
+            match.points = 0;
+        });
+      },
+      newRound() {
+        this.matches = [];
+        if (this.playerCount === 2) {
+          this.matches.push({ players: [0, 1], winner: null, points: 0 });
+        } else if (this.playerCount === 3) {
+          this.matches.push({ players: [0, 1], winner: null, points: 0 });
+          this.matches.push({ players: [0, 2], winner: null, points: 0 });
+          this.matches.push({ players: [1, 2], winner: null, points: 0 });
+        }
+      },
+      editScores() {
+        this.editing = !this.editing;
+      }
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>
