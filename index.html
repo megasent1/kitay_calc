@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Chinese Poker Score Keeper</title>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
@@ -46,7 +46,7 @@
       margin: 10px;
     }
     input {
-      width: 96%;
+      width: calc(100% - 18px);
       padding: 8px;
       margin-bottom: 10px;
       border: 1px solid #ccc;
@@ -88,6 +88,36 @@
         justify-content: space-between;
         padding: 5px 0;
         border-bottom: 1px solid #eee;
+    }
+    @media (max-width: 600px) {
+      body {
+        align-items: flex-start;
+      }
+      #app {
+        margin: 0;
+        padding: 15px;
+        border-radius: 0;
+        box-shadow: none;
+        max-width: 100%;
+        min-height: 100vh;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+      .player-count-selection button {
+        font-size: 1.5em;
+        margin: 5px;
+      }
+      .player-card {
+        padding: 10px;
+      }
+      button {
+        font-size: 1.1em;
+      }
+      input {
+        padding: 10px;
+        font-size: 1em;
+      }
     }
   </style>
 </head>
