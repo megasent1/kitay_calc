@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Chinese Poker Score Keeper</title>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
@@ -238,7 +238,7 @@
         // For now, let's just clear the points and winners for the next input
         this.matches.forEach(match => {
             match.winner = null;
-            match.points = 0;
+            match.points = null;
         });
       },
       newRound() {
