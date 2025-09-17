@@ -244,11 +244,11 @@
       newRound() {
         this.matches = [];
         if (this.playerCount === 2) {
-          this.matches.push({ players: [0, 1], winner: null, points: 0 });
+          this.matches.push({ players: [0, 1], winner: null, points: null });
         } else if (this.playerCount === 3) {
-          this.matches.push({ players: [0, 1], winner: null, points: 0 });
-          this.matches.push({ players: [0, 2], winner: null, points: 0 });
-          this.matches.push({ players: [1, 2], winner: null, points: 0 });
+          this.matches.push({ players: [0, 1], winner: null, points: null });
+          this.matches.push({ players: [0, 2], winner: null, points: null });
+          this.matches.push({ players: [1, 2], winner: null, points: null });
         }
       },
       editScores() {
