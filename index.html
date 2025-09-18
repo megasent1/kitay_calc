@@ -23,7 +23,7 @@
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    h1, h2 {
+    h1, h2, h3 {
       text-align: center;
     }
     button {
@@ -89,6 +89,36 @@
         padding: 5px 0;
         border-bottom: 1px solid #eee;
     }
+    .history-game {
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+    .history-round {
+        border: 1px solid #eee;
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 4px;
+        background-color: white;
+    }
+    .round-match {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 5px 0;
+        padding: 5px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+    }
+    .match-winner {
+        color: green;
+        font-weight: bold;
+    }
+    .match-loser {
+        color: red;
+    }
     @media (max-width: 600px) {
       body {
         align-items: flex-start;
@@ -124,7 +154,7 @@
 <body>
 
 <div id="app">
-  <div v-if="!gameStarted">
+  <div v-if="!gameStarted && !showHistory">
     <h1>Выберите количество игроков</h1>
     <div class="player-count-selection">
       <button @click="selectPlayerCount(2)">2</button>
@@ -136,6 +166,48 @@
       </div>
       <button @click="startGame">Старт</button>
     </div>
+    <button @click="showHistory = true">История игр</button>
+  </div>
+
+  <div v-else-if="showHistory">
+    <h2>История игр</h2>
+    <div v-if="history.length === 0">
+      <p style="text-align: center;">История игр пуста</p>
+    </div>
+    <div v-for="(game, gameIndex) in history" :key="gameIndex" class="history-game">
+      <h3>Игра {{ gameIndex + 1 }}</h3>
+      <p><strong>Дата начала:</strong> {{ new Date(game.startDate).toLocaleString() }}</p>
+      <p v-if="game.endDate"><strong>Дата окончания:</strong> {{ new Date(game.endDate).toLocaleString() }}</p>
+      <p><strong>Статус:</strong> {{ game.isCompleted ? 'Завершена' : 'В процессе' }}</p>
+      
+      <div><strong>Финальные результаты:</strong></div>
+      <ul>
+        <li v-for="player in game.finalScores" :key="player.id">
+          {{ player.name }}: {{ player.score }}
+        </li>
+      </ul>
+
+      <div v-if="game.rounds.length > 0">
+        <h4>Раунды ({{ game.rounds.length }}):</h4>
+        <div v-for="(round, roundIndex) in game.rounds" :key="roundIndex" class="history-round">
+          <strong>Раунд {{ roundIndex + 1 }}</strong> - {{ new Date(round.timestamp).toLocaleTimeString() }}
+          <div v-for="match in round.matches" :key="match.players.join('-')" class="round-match">
+            <span>
+              <span :class="{ 'match-winner': match.winner === match.players[0], 'match-loser': match.winner === match.players[1] }">
+                {{ getPlayerNameFromGame(game, match.players[0]) }}
+              </span>
+              vs
+              <span :class="{ 'match-winner': match.winner === match.players[1], 'match-loser': match.winner === match.players[0] }">
+                {{ getPlayerNameFromGame(game, match.players[1]) }}
+              </span>
+            </span>
+            <span><strong>{{ match.points }} очков</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button @click="showHistory = false">Назад</button>
+    <button @click="clearHistory" style="background-color: #ffebee; color: red;">Очистить историю</button>
   </div>
 
   <div v-else>
@@ -170,6 +242,7 @@
         </div>
         <button @click="saveScores">Сохранить</button>
         <button @click="editScores">Изменить очки</button>
+        <button @click="endGame">Завершить игру</button>
     </div>
 
     <div v-if="editing">
@@ -194,9 +267,33 @@
         gameStarted: false,
         matches: [],
         editing: false,
+        history: [],
+        showHistory: false,
+        currentGame: null,
       };
     },
+    created() {
+      this.loadHistory();
+      this.loadCurrentGame();
+    },
     methods: {
+      loadHistory() {
+        const history = localStorage.getItem('chinesePokerHistory');
+        if (history) {
+          this.history = JSON.parse(history);
+        }
+      },
+      loadCurrentGame() {
+        const currentGame = localStorage.getItem('currentChinesePokerGame');
+        if (currentGame) {
+          const game = JSON.parse(currentGame);
+          this.currentGame = game;
+          this.players = JSON.parse(JSON.stringify(game.finalScores));
+          this.playerCount = this.players.length;
+          this.gameStarted = true;
+          this.newRound();
+        }
+      },
       selectPlayerCount(count) {
         this.playerCount = count;
         this.players = [];
@@ -212,11 +309,27 @@
             }
         });
         this.gameStarted = true;
+        
+        // Create new game record
+        this.currentGame = {
+          startDate: new Date().toISOString(),
+          endDate: null,
+          isCompleted: false,
+          players: JSON.parse(JSON.stringify(this.players)),
+          finalScores: JSON.parse(JSON.stringify(this.players)),
+          rounds: []
+        };
+        
+        this.saveCurrentGame();
         this.newRound();
       },
       getPlayerName(playerId) {
           const player = this.players.find(p => p.id === playerId);
           return player ? player.name : '';
+      },
+      getPlayerNameFromGame(game, playerId) {
+          const player = game.players.find(p => p.id === playerId);
+          return player ? player.name : `Игрок ${playerId + 1}`;
       },
       selectWinner(matchIndex, winnerId) {
         this.matches[matchIndex].winner = winnerId;
@@ -227,13 +340,20 @@
             alert('Пожалуйста, выберите победителя для всех матчей.');
             return;
           }
-
-          if (!match.points || match.points === '' || match.points === null || isNaN(match.points) || match.points <= 0) {
+          if (!match.points || match.points <= 0) {
             alert('Пожалуйста, введите корректные очки для всех матчей (больше 0).');
             return;
           }
         }
 
+        // Save round data
+        const roundData = {
+          timestamp: new Date().toISOString(),
+          matches: JSON.parse(JSON.stringify(this.matches))
+        };
+        this.currentGame.rounds.push(roundData);
+
+        // Update scores
         this.matches.forEach(match => {
           if (match.winner !== null && match.points > 0) {
             const winnerPlayer = this.players.find(p => p.id === match.winner);
@@ -246,8 +366,15 @@
             }
           }
         });
-        // After saving, maybe start a new round or show a summary
-        // For now, let's just clear the points and winners for the next input
+
+        // Update current game with latest scores
+        this.currentGame.finalScores = JSON.parse(JSON.stringify(this.players));
+        
+        // Save to localStorage after each round
+        this.saveCurrentGame();
+        this.saveToHistory();
+
+        // Clear the points and winners for the next input
         this.matches.forEach(match => {
             match.winner = null;
             match.points = null;
@@ -271,8 +398,55 @@
               return;
             }
           }
+          // Update current game scores when manually edited
+          if (this.currentGame) {
+            this.currentGame.finalScores = JSON.parse(JSON.stringify(this.players));
+            this.saveCurrentGame();
+            this.saveToHistory();
+          }
         }
         this.editing = !this.editing;
+      },
+      saveCurrentGame() {
+        if (this.currentGame) {
+          localStorage.setItem('currentChinesePokerGame', JSON.stringify(this.currentGame));
+        }
+      },
+      saveToHistory() {
+        // Update existing game in history or add new one
+        const existingGameIndex = this.history.findIndex(game => 
+          game.startDate === this.currentGame.startDate
+        );
+        
+        if (existingGameIndex >= 0) {
+          this.history[existingGameIndex] = JSON.parse(JSON.stringify(this.currentGame));
+        } else {
+          this.history.push(JSON.parse(JSON.stringify(this.currentGame)));
+        }
+        
+        localStorage.setItem('chinesePokerHistory', JSON.stringify(this.history));
+      },
+      endGame() {
+        if (this.currentGame) {
+          this.currentGame.endDate = new Date().toISOString();
+          this.currentGame.isCompleted = true;
+          this.currentGame.finalScores = JSON.parse(JSON.stringify(this.players));
+          
+          this.saveToHistory();
+          localStorage.removeItem('currentChinesePokerGame');
+        }
+        
+        this.gameStarted = false;
+        this.playerCount = 0;
+        this.players = [];
+        this.matches = [];
+        this.currentGame = null;
+      },
+      clearHistory() {
+        if (confirm('Вы уверены, что хотите очистить всю историю игр?')) {
+          this.history = [];
+          localStorage.removeItem('chinesePokerHistory');
+        }
       }
     }
   }).mount('#app');
