@@ -222,6 +222,18 @@
         this.matches[matchIndex].winner = winnerId;
       },
       saveScores() {
+        for (const match of this.matches) {
+          if (match.winner === null) {
+            alert('Пожалуйста, выберите победителя для всех матчей.');
+            return;
+          }
+
+          if (!match.points || match.points === '' || match.points === null || isNaN(match.points) || match.points <= 0) {
+            alert('Пожалуйста, введите корректные очки для всех матчей (больше 0).');
+            return;
+          }
+        }
+
         this.matches.forEach(match => {
           if (match.winner !== null && match.points > 0) {
             const winnerPlayer = this.players.find(p => p.id === match.winner);
@@ -252,6 +264,14 @@
         }
       },
       editScores() {
+        if (this.editing) {
+          for (const player of this.players) {
+            if (player.score === '' || player.score === null || isNaN(player.score)) {
+              alert(`Пожалуйста, введите корректные очки для игрока ${player.name}.`);
+              return;
+            }
+          }
+        }
         this.editing = !this.editing;
       }
     }
