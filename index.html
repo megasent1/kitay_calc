@@ -210,6 +210,32 @@
     <button @click="clearHistory" style="background-color: #ffebee; color: red;">Очистить историю</button>
   </div>
 
+  <div v-else-if="showCurrentGameRounds">
+    <h2>Раунды текущей игры</h2>
+    <div v-if="!currentGame || currentGame.rounds.length === 0">
+      <p style="text-align: center;">Раунды еще не сыграны</p>
+    </div>
+    <div v-else>
+      <p><strong>Дата начала игры:</strong> {{ new Date(currentGame.startDate).toLocaleString() }}</p>
+      <div v-for="(round, roundIndex) in currentGame.rounds" :key="roundIndex" class="history-round">
+        <strong>Раунд {{ roundIndex + 1 }}</strong> - {{ new Date(round.timestamp).toLocaleTimeString() }}
+        <div v-for="match in round.matches" :key="match.players.join('-')" class="round-match">
+          <span>
+            <span :class="{ 'match-winner': match.winner === match.players[0], 'match-loser': match.winner === match.players[1] }">
+              {{ getPlayerName(match.players[0]) }}
+            </span>
+            vs
+            <span :class="{ 'match-winner': match.winner === match.players[1], 'match-loser': match.winner === match.players[0] }">
+              {{ getPlayerName(match.players[1]) }}
+            </span>
+          </span>
+          <span><strong>{{ match.points }} очков</strong></span>
+        </div>
+      </div>
+    </div>
+    <button @click="showCurrentGameRounds = false">Назад к игре</button>
+  </div>
+
   <div v-else>
     <div class="scores-summary">
         <h2>Общий счет</h2>
@@ -219,7 +245,7 @@
         </div>
     </div>
 
-    <div v-if="!editing">
+    <div v-if="!editing && !showCurrentGameRounds">
         <h1>Ввод очков</h1>
         <div class="match-input" v-for="(match, matchIndex) in matches" :key="matchIndex">
           <div class="player-pair">
@@ -242,6 +268,7 @@
         </div>
         <button @click="saveScores">Сохранить</button>
         <button @click="editScores">Изменить очки</button>
+        <button @click="showCurrentGameRounds = true">Просмотр раундов</button>
         <button @click="endGame">Завершить игру</button>
     </div>
 
@@ -269,6 +296,7 @@
         editing: false,
         history: [],
         showHistory: false,
+        showCurrentGameRounds: false,
         currentGame: null,
       };
     },
